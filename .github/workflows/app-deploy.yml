@@ -1,0 +1,232 @@
+name: App Deployment
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+env:
+  RESOURCE_GROUP: cst8918-final-project-group-7
+  REDIS_RESOURCE_GROUP: cst8918-backend-rg  # Redis is in different RG
+  ACR_NAME: cst8918weatheracr
+  TEST_REDIS_NAME: cst8918-test-redis
+  PROD_REDIS_NAME: cst8918-prod-redis
+  TEST_CLUSTER_NAME: cst8918-test-aks  
+  PROD_CLUSTER_NAME: cst8918-prod-aks
+  KUBERNETES_NAMESPACE: weather-app
+
+jobs:
+  deploy-test:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        
+    - name: Set AKS Context
+      uses: azure/aks-set-context@v4
+      with:
+        resource-group: ${{ env.RESOURCE_GROUP }}
+        cluster-name: ${{ env.TEST_CLUSTER_NAME }}
+        
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.5.0"
+        
+    - name: Import Azure Resources (if needed)
+      run: |
+        cd terraform/remix-weather-app
+        terraform init
+        # Check state and import Azure resources only if needed
+        terraform state show azurerm_container_registry.acr >/dev/null 2>&1 || terraform import azurerm_container_registry.acr "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.ContainerRegistry/registries/${{ env.ACR_NAME }}" || echo "ACR import failed, continuing..."
+        terraform state show azurerm_redis_cache.test >/dev/null 2>&1 || terraform import azurerm_redis_cache.test "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.REDIS_RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.TEST_REDIS_NAME }}" || echo "Test Redis import failed, continuing..."
+        terraform state show azurerm_redis_cache.prod >/dev/null 2>&1 || terraform import azurerm_redis_cache.prod "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.REDIS_RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.PROD_REDIS_NAME }}" || echo "Prod Redis import failed, continuing..."
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        
+    - name: Import Test Environment Resources (if needed)
+      run: |
+        cd terraform/remix-weather-app
+        # Check state and import Kubernetes resources only if needed (will fail due to stopped AKS, but that's expected)
+        echo "Checking and importing Kubernetes resources if needed (will fail with stopped AKS)..."
+        terraform state show kubernetes_namespace.weather_app >/dev/null 2>&1 || terraform import kubernetes_namespace.weather_app ${{ env.KUBERNETES_NAMESPACE }} || echo "Namespace import failed (expected with stopped AKS), continuing..."
+        terraform state show kubernetes_secret.redis_connection >/dev/null 2>&1 || terraform import kubernetes_secret.redis_connection ${{ env.KUBERNETES_NAMESPACE }}/redis-connection || echo "Redis secret import failed (expected with stopped AKS), continuing..."
+        terraform state show kubernetes_secret.weather_api_key >/dev/null 2>&1 || terraform import kubernetes_secret.weather_api_key ${{ env.KUBERNETES_NAMESPACE }}/weather-api-key || echo "Weather API secret import failed (expected with stopped AKS), continuing..."
+        terraform state show kubernetes_secret.acr_credentials >/dev/null 2>&1 || terraform import kubernetes_secret.acr_credentials ${{ env.KUBERNETES_NAMESPACE }}/acr-credentials || echo "ACR credentials secret import failed (expected with stopped AKS), continuing..."
+        terraform state show kubernetes_service.weather_app_test >/dev/null 2>&1 || terraform import kubernetes_service.weather_app_test ${{ env.KUBERNETES_NAMESPACE }}/weather-app-test-service || echo "Test service import failed (expected with stopped AKS), continuing..."
+        terraform state show kubernetes_deployment.weather_app_test >/dev/null 2>&1 || terraform import kubernetes_deployment.weather_app_test ${{ env.KUBERNETES_NAMESPACE }}/weather-app-test || echo "Test deployment import failed (expected with stopped AKS), continuing..."
+        terraform state show kubernetes_ingress_v1.weather_app_test >/dev/null 2>&1 || terraform import kubernetes_ingress_v1.weather_app_test ${{ env.KUBERNETES_NAMESPACE }}/weather-app-test-ingress || echo "Test ingress import failed (expected with stopped AKS), continuing..."
+        echo "Test environment import check completed!"
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        KUBECONFIG: ${{ env.KUBE_CONFIG_PATH }}
+        TF_VAR_kube_config_path: ${{ env.KUBE_CONFIG_PATH }}
+        
+    - name: Deploy to Test Environment Only
+      run: |
+        cd terraform/remix-weather-app
+        # Deploy only test-related resources
+        terraform apply -auto-approve \
+          -var="app_version=${{ github.sha }}" \
+          -var="kube_config_path=$KUBECONFIG" \
+          -target="kubernetes_namespace.weather_app" \
+          -target="kubernetes_secret.redis_connection" \
+          -target="kubernetes_secret.weather_api_key" \
+          -target="kubernetes_secret.acr_credentials" \
+          -target="kubernetes_deployment.weather_app_test" \
+          -target="kubernetes_service.weather_app_test" \
+          -target="kubernetes_ingress_v1.weather_app_test"
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        TF_VAR_weather_api_key: ${{ secrets.WEATHER_API_KEY }}
+        KUBECONFIG: ${{ env.KUBE_CONFIG_PATH }}
+
+  deploy-prod:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        
+    - name: Set AKS Context
+      uses: azure/aks-set-context@v4
+      with:
+        resource-group: ${{ env.RESOURCE_GROUP }}
+        cluster-name: ${{ env.PROD_CLUSTER_NAME }}
+        
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.5.0"
+        
+    - name: Import Azure Resources
+      run: |
+        cd terraform/remix-weather-app
+        terraform init
+        # Import Azure resources (these work without AKS context)
+        terraform import azurerm_container_registry.acr "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.ContainerRegistry/registries/${{ env.ACR_NAME }}" || echo "ACR may not exist yet, continuing..."
+        terraform import azurerm_redis_cache.test "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.REDIS_RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.TEST_REDIS_NAME }}" || echo "Test Redis may not exist yet, continuing..."
+        terraform import azurerm_redis_cache.prod "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.REDIS_RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.PROD_REDIS_NAME }}" || echo "Prod Redis may not exist yet, continuing..."
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        
+    - name: Import Production Environment Resources Only
+      run: |
+        cd terraform/remix-weather-app
+        # Import ALL Kubernetes resources (after AKS context is set)
+        echo "Importing Kubernetes Namespace..."
+        terraform import kubernetes_namespace.weather_app ${{ env.KUBERNETES_NAMESPACE }} || echo "Namespace may not exist yet, continuing..."
+        
+        echo "Importing Kubernetes Secrets..."
+        terraform import kubernetes_secret.redis_connection ${{ env.KUBERNETES_NAMESPACE }}/redis-connection || echo "Redis secret may not exist yet, continuing..."
+        terraform import kubernetes_secret.weather_api_key ${{ env.KUBERNETES_NAMESPACE }}/weather-api-key || echo "Weather API secret may not exist yet, continuing..."
+        terraform import kubernetes_secret.acr_credentials ${{ env.KUBERNETES_NAMESPACE }}/acr-credentials || echo "ACR credentials secret may not exist yet, continuing..."
+        
+        echo "Importing Production Environment Kubernetes Resources Only..."
+        terraform import kubernetes_service.weather_app_prod ${{ env.KUBERNETES_NAMESPACE }}/weather-app-prod-service || echo "Prod service may not exist yet, continuing..."
+        terraform import kubernetes_deployment.weather_app_prod ${{ env.KUBERNETES_NAMESPACE }}/weather-app-prod || echo "Prod deployment may not exist yet, continuing..."
+        terraform import kubernetes_ingress_v1.weather_app_prod ${{ env.KUBERNETES_NAMESPACE }}/weather-app-prod-ingress || echo "Prod ingress may not exist yet, continuing..."
+        
+        echo "Production environment resources imported successfully!"
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        KUBECONFIG: ${{ env.KUBE_CONFIG_PATH }}
+        TF_VAR_kube_config_path: ${{ env.KUBE_CONFIG_PATH }}
+        
+    - name: Import Azure Resources (if needed)
+      run: |
+        cd terraform/remix-weather-app
+        terraform init
+        # Check state and import Azure resources only if needed
+        terraform state show azurerm_container_registry.acr >/dev/null 2>&1 || terraform import azurerm_container_registry.acr "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.ContainerRegistry/registries/${{ env.ACR_NAME }}" || echo "ACR import failed, continuing..."
+        terraform state show azurerm_redis_cache.test >/dev/null 2>&1 || terraform import azurerm_redis_cache.test "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.REDIS_RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.TEST_REDIS_NAME }}" || echo "Test Redis import failed, continuing..."
+        terraform state show azurerm_redis_cache.prod >/dev/null 2>&1 || terraform import azurerm_redis_cache.prod "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.REDIS_RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.PROD_REDIS_NAME }}" || echo "Prod Redis import failed, continuing..."
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        
+    - name: Import Production Environment Resources (if needed)
+      run: |
+        cd terraform/remix-weather-app
+        # Check state and import Kubernetes resources only if needed (will fail due to stopped AKS, but that's expected)
+        echo "Checking and importing Kubernetes resources if needed (will fail with stopped AKS)..."
+        terraform state show kubernetes_namespace.weather_app >/dev/null 2>&1 || terraform import kubernetes_namespace.weather_app ${{ env.KUBERNETES_NAMESPACE }} || echo "Namespace import failed (expected with stopped AKS), continuing..."
+        terraform state show kubernetes_secret.redis_connection >/dev/null 2>&1 || terraform import kubernetes_secret.redis_connection ${{ env.KUBERNETES_NAMESPACE }}/redis-connection || echo "Redis secret import failed (expected with stopped AKS), continuing..."
+        terraform state show kubernetes_secret.weather_api_key >/dev/null 2>&1 || terraform import kubernetes_secret.weather_api_key ${{ env.KUBERNETES_NAMESPACE }}/weather-api-key || echo "Weather API secret import failed (expected with stopped AKS), continuing..."
+        terraform state show kubernetes_secret.acr_credentials >/dev/null 2>&1 || terraform import kubernetes_secret.acr_credentials ${{ env.KUBERNETES_NAMESPACE }}/acr-credentials || echo "ACR credentials secret import failed (expected with stopped AKS), continuing..."
+        terraform state show kubernetes_service.weather_app_prod >/dev/null 2>&1 || terraform import kubernetes_service.weather_app_prod ${{ env.KUBERNETES_NAMESPACE }}/weather-app-prod-service || echo "Prod service import failed (expected with stopped AKS), continuing..."
+        terraform state show kubernetes_deployment.weather_app_prod >/dev/null 2>&1 || terraform import kubernetes_deployment.weather_app_prod ${{ env.KUBERNETES_NAMESPACE }}/weather-app-prod || echo "Prod deployment import failed (expected with stopped AKS), continuing..."
+        terraform state show kubernetes_ingress_v1.weather_app_prod >/dev/null 2>&1 || terraform import kubernetes_ingress_v1.weather_app_prod ${{ env.KUBERNETES_NAMESPACE }}/weather-app-prod-ingress || echo "Prod ingress import failed (expected with stopped AKS), continuing..."
+        echo "Production environment import check completed!"
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        KUBECONFIG: ${{ env.KUBE_CONFIG_PATH }}
+        TF_VAR_kube_config_path: ${{ env.KUBE_CONFIG_PATH }}
+        
+    - name: Deploy to Production Environment Only
+      run: |
+        cd terraform/remix-weather-app
+        # Deploy only prod-related resources
+        terraform apply -auto-approve \
+          -var="app_version=${{ github.sha }}" \
+          -var="kube_config_path=$KUBECONFIG" \
+          -target="kubernetes_namespace.weather_app" \
+          -target="kubernetes_secret.redis_connection" \
+          -target="kubernetes_secret.weather_api_key" \
+          -target="kubernetes_secret.acr_credentials" \
+          -target="kubernetes_deployment.weather_app_prod" \
+          -target="kubernetes_service.weather_app_prod" \
+          -target="kubernetes_ingress_v1.weather_app_prod"
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        TF_VAR_weather_api_key: ${{ secrets.WEATHER_API_KEY }}
+        KUBECONFIG: ${{ env.KUBE_CONFIG_PATH }} 

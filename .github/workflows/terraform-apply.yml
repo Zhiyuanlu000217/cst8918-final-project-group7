@@ -1,0 +1,95 @@
+name: Terraform Apply
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-apply.yml'
+
+env:
+  BACKEND_RG: cst8918-backend-rg
+  BACKEND_STORAGE_ACCOUNT: cst8918tfstate
+  RESOURCE_GROUP: cst8918-final-project-group-7
+  VNET_NAME: cst8918-vnet
+  TEST_CLUSTER_NAME: cst8918-test-aks
+  PROD_CLUSTER_NAME: cst8918-prod-aks
+
+jobs:
+  terraform-apply:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.5.0"
+        
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        
+    - name: Terraform Init
+      run: |
+        cd terraform
+        terraform init
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        
+    - name: Import Infrastructure Resources (if needed)
+      run: |
+        cd terraform
+        echo "Checking and importing backend resources if needed..."
+        terraform state show module.backend.azurerm_resource_group.backend >/dev/null 2>&1 || terraform import module.backend.azurerm_resource_group.backend "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.BACKEND_RG }}" || echo "Backend RG import failed, continuing..."
+        terraform state show module.backend.azurerm_storage_account.backend >/dev/null 2>&1 || terraform import module.backend.azurerm_storage_account.backend "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.BACKEND_RG }}/providers/Microsoft.Storage/storageAccounts/${{ env.BACKEND_STORAGE_ACCOUNT }}" || echo "Backend storage import failed, continuing..."
+        
+        echo "Checking and importing network resources if needed..."
+        terraform state show module.network.azurerm_resource_group.network >/dev/null 2>&1 || terraform import module.network.azurerm_resource_group.network "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}" || echo "Network RG import failed, continuing..."
+        terraform state show module.network.azurerm_virtual_network.main >/dev/null 2>&1 || terraform import module.network.azurerm_virtual_network.main "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Network/virtualNetworks/${{ env.VNET_NAME }}" || echo "VNet import failed, continuing..."
+        
+        echo "Checking and importing subnets if needed..."
+        terraform state show module.network.azurerm_subnet.prod >/dev/null 2>&1 || terraform import module.network.azurerm_subnet.prod "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Network/virtualNetworks/${{ env.VNET_NAME }}/subnets/prod" || echo "Prod subnet import failed, continuing..."
+        terraform state show module.network.azurerm_subnet.test >/dev/null 2>&1 || terraform import module.network.azurerm_subnet.test "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Network/virtualNetworks/${{ env.VNET_NAME }}/subnets/test" || echo "Test subnet import failed, continuing..."
+        terraform state show module.network.azurerm_subnet.dev >/dev/null 2>&1 || terraform import module.network.azurerm_subnet.dev "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Network/virtualNetworks/${{ env.VNET_NAME }}/subnets/dev" || echo "Dev subnet import failed, continuing..."
+        terraform state show module.network.azurerm_subnet.admin >/dev/null 2>&1 || terraform import module.network.azurerm_subnet.admin "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Network/virtualNetworks/${{ env.VNET_NAME }}/subnets/admin" || echo "Admin subnet import failed, continuing..."
+        
+        echo "Checking and importing NSG associations if needed..."
+        terraform state show module.network.azurerm_subnet_network_security_group_association.prod >/dev/null 2>&1 || terraform import module.network.azurerm_subnet_network_security_group_association.prod "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Network/virtualNetworks/${{ env.VNET_NAME }}/subnets/prod" || echo "Prod NSG association import failed, continuing..."
+        terraform state show module.network.azurerm_subnet_network_security_group_association.test >/dev/null 2>&1 || terraform import module.network.azurerm_subnet_network_security_group_association.test "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Network/virtualNetworks/${{ env.VNET_NAME }}/subnets/test" || echo "Test NSG association import failed, continuing..."
+        terraform state show module.network.azurerm_subnet_network_security_group_association.dev >/dev/null 2>&1 || terraform import module.network.azurerm_subnet_network_security_group_association.dev "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Network/virtualNetworks/${{ env.VNET_NAME }}/subnets/dev" || echo "Dev NSG association import failed, continuing..."
+        terraform state show module.network.azurerm_subnet_network_security_group_association.admin >/dev/null 2>&1 || terraform import module.network.azurerm_subnet_network_security_group_association.admin "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Network/virtualNetworks/${{ env.VNET_NAME }}/subnets/admin" || echo "Admin NSG association import failed, continuing..."
+        
+        echo "Checking and importing AKS clusters if needed..."
+        terraform state show module.aks_clusters.azurerm_kubernetes_cluster.test >/dev/null 2>&1 || terraform import module.aks_clusters.azurerm_kubernetes_cluster.test "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.ContainerService/managedClusters/${{ env.TEST_CLUSTER_NAME }}" || echo "Test AKS import failed, continuing..."
+        terraform state show module.aks_clusters.azurerm_kubernetes_cluster.prod >/dev/null 2>&1 || terraform import module.aks_clusters.azurerm_kubernetes_cluster.prod "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.ContainerService/managedClusters/${{ env.PROD_CLUSTER_NAME }}" || echo "Prod AKS import failed, continuing..."
+        
+        echo "Import check completed!"
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        
+    - name: Terraform Apply
+      run: |
+        cd terraform
+        terraform apply -auto-approve
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        TF_VAR_weather_api_key: ${{ secrets.WEATHER_API_KEY }} 

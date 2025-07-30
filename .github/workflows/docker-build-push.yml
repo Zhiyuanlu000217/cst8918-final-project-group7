@@ -1,0 +1,56 @@
+name: Docker Build and Push
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'remix-weather-app/**'
+      - '.github/workflows/docker-build-push.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'remix-weather-app/**'
+      - '.github/workflows/docker-build-push.yml'
+
+env:
+  ACR_NAME: cst8918weatheracr
+  ACR_LOGIN_SERVER: cst8918weatheracr.azurecr.io
+  IMAGE_NAME: weather-app
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        
+    - name: Login to Azure Container Registry
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ env.ACR_LOGIN_SERVER }}
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
+        
+    - name: Build and Push Docker Image
+      run: |
+        cd remix-weather-app
+        docker build --platform linux/amd64 -t ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+        docker push ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        
+    - name: Tag as latest
+      run: |
+        cd remix-weather-app
+        docker tag ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest
+        docker push ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest 

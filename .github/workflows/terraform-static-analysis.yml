@@ -2,7 +2,7 @@ name: Terraform Static Analysis
 
 on:
   push:
-    branches: [ main ]  # Run on push to any branch
+    branches: [ '*' ]  # Run on push to any branch
     paths:
       - 'terraform/**'
       - '.github/workflows/terraform-static-analysis.yml'

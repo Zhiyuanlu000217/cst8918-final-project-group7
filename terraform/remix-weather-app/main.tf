@@ -41,7 +41,7 @@ resource "azurerm_container_registry" "acr" {
 resource "azurerm_redis_cache" "test" {
   name                = var.test_redis_name
   location            = var.location
-  resource_group_name = var.resource_group_name
+  resource_group_name = var.redis_resource_group_name
   capacity            = 0
   family              = "C"
   sku_name            = "Basic"
@@ -61,7 +61,7 @@ resource "azurerm_redis_cache" "test" {
 resource "azurerm_redis_cache" "prod" {
   name                = var.prod_redis_name
   location            = var.location
-  resource_group_name = var.resource_group_name
+  resource_group_name = var.redis_resource_group_name
   capacity            = 1
   family              = "C"
   sku_name            = "Basic"
