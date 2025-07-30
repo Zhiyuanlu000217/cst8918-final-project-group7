@@ -3,8 +3,16 @@ name: App Deployment
 on:
   pull_request:
     branches: [ main ]
+    paths:
+      - 'remix-weather-app/**'
+      - '.github/workflows/docker-build-push.yml'
+      - '.github/workflows/app-deploy.yml'
   push:
     branches: [ main ]
+    paths:
+      - 'remix-weather-app/**'
+      - '.github/workflows/docker-build-push.yml'
+      - '.github/workflows/app-deploy.yml'
 
 env:
   RESOURCE_GROUP: cst8918-final-project-group-7
