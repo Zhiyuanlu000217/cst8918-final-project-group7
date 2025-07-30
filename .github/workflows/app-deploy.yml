@@ -88,7 +88,6 @@ jobs:
         ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         KUBECONFIG: ${{ env.KUBE_CONFIG_PATH }}
-        TF_VAR_kube_config_path: ${{ env.KUBE_CONFIG_PATH }}
         
     - name: Deploy to Test Environment Only
       run: |
@@ -96,7 +95,6 @@ jobs:
         # Deploy only test-related resources
         terraform apply -auto-approve \
           -var="app_version=${{ github.sha }}" \
-          -var="kube_config_path=$KUBECONFIG" \
           -target="kubernetes_namespace.weather_app" \
           -target="kubernetes_secret.redis_connection" \
           -target="kubernetes_secret.weather_api_key" \
@@ -180,7 +178,6 @@ jobs:
         ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         KUBECONFIG: ${{ env.KUBE_CONFIG_PATH }}
-        TF_VAR_kube_config_path: ${{ env.KUBE_CONFIG_PATH }}
         
     - name: Import Azure Resources (if needed)
       run: |
@@ -215,7 +212,6 @@ jobs:
         ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         KUBECONFIG: ${{ env.KUBE_CONFIG_PATH }}
-        TF_VAR_kube_config_path: ${{ env.KUBE_CONFIG_PATH }}
         
     - name: Deploy to Production Environment Only
       run: |
@@ -223,7 +219,6 @@ jobs:
         # Deploy only prod-related resources
         terraform apply -auto-approve \
           -var="app_version=${{ github.sha }}" \
-          -var="kube_config_path=$KUBECONFIG" \
           -target="kubernetes_namespace.weather_app" \
           -target="kubernetes_secret.redis_connection" \
           -target="kubernetes_secret.weather_api_key" \
