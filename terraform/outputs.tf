@@ -1,17 +1,6 @@
 # Root Terraform Outputs
 # Outputs from all modules for the CST8918 Final Project
 
-# Backend outputs
-output "backend_storage_account_name" {
-  description = "Name of the storage account used for Terraform backend"
-  value       = module.backend.storage_account_name
-}
-
-output "backend_container_name" {
-  description = "Name of the blob container used for Terraform state"
-  value       = module.backend.container_name
-}
-
 # Network outputs
 output "vnet_name" {
   description = "Name of the virtual network"
@@ -118,10 +107,6 @@ output "container_image_repository" {
 output "infrastructure_summary" {
   description = "Summary of the complete infrastructure"
   value = {
-    backend = {
-      storage_account = module.backend.storage_account_name
-      container       = module.backend.container_name
-    }
     network = {
       vnet_name = module.network.vnet_name
       vnet_id   = module.network.vnet_id

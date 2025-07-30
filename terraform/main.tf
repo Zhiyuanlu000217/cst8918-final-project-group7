@@ -24,17 +24,6 @@ provider "azurerm" {
   features {}
 }
 
-# Backend Module - Azure Blob Storage for Terraform state
-module "backend" {
-  source = "./backend"
-
-  resource_group_name  = "cst8918-backend-rg"
-  location             = var.location
-  storage_account_name = var.storage_account_name
-  container_name       = var.container_name
-  enable_resource_lock = var.enable_resource_lock
-}
-
 # Network Module - Base network infrastructure
 module "network" {
   source = "./network"
@@ -69,18 +58,19 @@ module "aks_clusters" {
 module "remix_weather_app" {
   source = "./remix-weather-app"
 
-  resource_group_name  = var.resource_group_name
-  location             = var.location
-  acr_name             = var.acr_name
-  test_redis_name      = var.test_redis_name
-  prod_redis_name      = var.prod_redis_name
-  kubernetes_namespace = var.kubernetes_namespace
-  weather_api_key      = var.weather_api_key
-  app_version          = var.app_version
-  test_replicas        = var.test_replicas
-  prod_replicas        = var.prod_replicas
-  test_domain          = var.test_domain
-  prod_domain          = var.prod_domain
-  kube_config_path     = var.kube_config_path
-  tags                 = var.tags
+  resource_group_name       = var.resource_group_name
+  redis_resource_group_name = "cst8918-backend-rg" # Redis is in separate RG
+  location                  = var.location
+  acr_name                  = var.acr_name
+  test_redis_name           = var.test_redis_name
+  prod_redis_name           = var.prod_redis_name
+  kubernetes_namespace      = var.kubernetes_namespace
+  weather_api_key           = var.weather_api_key
+  app_version               = var.app_version
+  test_replicas             = var.test_replicas
+  prod_replicas             = var.prod_replicas
+  test_domain               = var.test_domain
+  prod_domain               = var.prod_domain
+  kube_config_path          = var.kube_config_path
+  tags                      = var.tags
 } 
