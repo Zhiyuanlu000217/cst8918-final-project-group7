@@ -1,0 +1,43 @@
+name: Terraform Static Analysis
+
+on:
+  push:
+    branches: [ '*' ]  # Run on push to any branch
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-static-analysis.yml'
+
+jobs:
+  static-analysis:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.5.0"
+        
+    - name: Terraform Format Check
+      run: |
+        cd terraform
+        terraform fmt -check -recursive
+        
+    - name: Terraform Validate
+      run: |
+        cd terraform
+        terraform init -backend=false
+        terraform validate
+        
+    - name: Setup tfsec
+      uses: aquasecurity/tfsec-action@v1.0.3
+      with:
+        working_directory: terraform
+        soft_fail: false
+        
+ 
