@@ -33,7 +33,7 @@ variable "test_node_count" {
 variable "test_vm_size" {
   description = "VM size for test cluster nodes"
   type        = string
-  default     = "Standard_DS2_v2"
+  default     = "Standard_DS2_v2" # Standard_DS2_v2 is a good balance of cost and performance
 }
 
 variable "prod_vm_size" {
