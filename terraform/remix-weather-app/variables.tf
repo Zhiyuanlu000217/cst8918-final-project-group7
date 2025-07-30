@@ -79,12 +79,6 @@ variable "prod_domain" {
   default     = "weather.cst8918.com"
 }
 
-variable "kube_config_path" {
-  description = "Path to the Kubernetes config file (optional, defaults to ~/.kube/config)"
-  type        = string
-  default     = null
-}
-
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)
