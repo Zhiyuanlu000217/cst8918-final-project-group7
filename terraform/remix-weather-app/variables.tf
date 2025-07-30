@@ -64,7 +64,7 @@ variable "test_replicas" {
 variable "prod_replicas" {
   description = "Number of replicas for the production environment deployment"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "test_domain" {

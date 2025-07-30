@@ -13,25 +13,6 @@ variable "location" {
   default     = "East US"
 }
 
-# Backend variables
-variable "storage_account_name" {
-  description = "Name of the storage account for Terraform backend"
-  type        = string
-  default     = "cst8918tfstate"
-}
-
-variable "container_name" {
-  description = "Name of the blob container for Terraform state"
-  type        = string
-  default     = "terraform-state"
-}
-
-variable "enable_resource_lock" {
-  description = "Enable resource lock to prevent accidental deletion"
-  type        = bool
-  default     = true
-}
-
 # Network variables
 variable "vnet_name" {
   description = "Name of the virtual network"
