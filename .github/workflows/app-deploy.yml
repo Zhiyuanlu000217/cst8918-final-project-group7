@@ -8,6 +8,7 @@ on:
 
 env:
   RESOURCE_GROUP: cst8918-final-project-group-7
+  REDIS_RESOURCE_GROUP: cst8918-backend-rg  # Redis is in different RG
   ACR_NAME: cst8918weatheracr
   TEST_REDIS_NAME: cst8918-test-redis
   PROD_REDIS_NAME: cst8918-prod-redis
@@ -52,8 +53,8 @@ jobs:
         terraform init
         # Check state and import Azure resources only if needed
         terraform state show azurerm_container_registry.acr >/dev/null 2>&1 || terraform import azurerm_container_registry.acr "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.ContainerRegistry/registries/${{ env.ACR_NAME }}" || echo "ACR import failed, continuing..."
-        terraform state show azurerm_redis_cache.test >/dev/null 2>&1 || terraform import azurerm_redis_cache.test "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.TEST_REDIS_NAME }}" || echo "Test Redis import failed, continuing..."
-        terraform state show azurerm_redis_cache.prod >/dev/null 2>&1 || terraform import azurerm_redis_cache.prod "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.PROD_REDIS_NAME }}" || echo "Prod Redis import failed, continuing..."
+        terraform state show azurerm_redis_cache.test >/dev/null 2>&1 || terraform import azurerm_redis_cache.test "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.REDIS_RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.TEST_REDIS_NAME }}" || echo "Test Redis import failed, continuing..."
+        terraform state show azurerm_redis_cache.prod >/dev/null 2>&1 || terraform import azurerm_redis_cache.prod "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.REDIS_RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.PROD_REDIS_NAME }}" || echo "Prod Redis import failed, continuing..."
       env:
         ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
         ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
@@ -139,8 +140,8 @@ jobs:
         terraform init
         # Import Azure resources (these work without AKS context)
         terraform import azurerm_container_registry.acr "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.ContainerRegistry/registries/${{ env.ACR_NAME }}" || echo "ACR may not exist yet, continuing..."
-        terraform import azurerm_redis_cache.test "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.TEST_REDIS_NAME }}" || echo "Test Redis may not exist yet, continuing..."
-        terraform import azurerm_redis_cache.prod "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.PROD_REDIS_NAME }}" || echo "Prod Redis may not exist yet, continuing..."
+        terraform import azurerm_redis_cache.test "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.REDIS_RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.TEST_REDIS_NAME }}" || echo "Test Redis may not exist yet, continuing..."
+        terraform import azurerm_redis_cache.prod "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.REDIS_RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.PROD_REDIS_NAME }}" || echo "Prod Redis may not exist yet, continuing..."
       env:
         ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
         ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
@@ -179,8 +180,8 @@ jobs:
         terraform init
         # Check state and import Azure resources only if needed
         terraform state show azurerm_container_registry.acr >/dev/null 2>&1 || terraform import azurerm_container_registry.acr "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.ContainerRegistry/registries/${{ env.ACR_NAME }}" || echo "ACR import failed, continuing..."
-        terraform state show azurerm_redis_cache.test >/dev/null 2>&1 || terraform import azurerm_redis_cache.test "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.TEST_REDIS_NAME }}" || echo "Test Redis import failed, continuing..."
-        terraform state show azurerm_redis_cache.prod >/dev/null 2>&1 || terraform import azurerm_redis_cache.prod "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.PROD_REDIS_NAME }}" || echo "Prod Redis import failed, continuing..."
+        terraform state show azurerm_redis_cache.test >/dev/null 2>&1 || terraform import azurerm_redis_cache.test "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.REDIS_RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.TEST_REDIS_NAME }}" || echo "Test Redis import failed, continuing..."
+        terraform state show azurerm_redis_cache.prod >/dev/null 2>&1 || terraform import azurerm_redis_cache.prod "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.REDIS_RESOURCE_GROUP }}/providers/Microsoft.Cache/redis/${{ env.PROD_REDIS_NAME }}" || echo "Prod Redis import failed, continuing..."
       env:
         ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
         ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}

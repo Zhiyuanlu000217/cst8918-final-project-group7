@@ -1,9 +1,15 @@
 # Remix Weather App Module Variables
 
 variable "resource_group_name" {
-  description = "Name of the resource group for the weather app infrastructure"
+  description = "Name of the main resource group"
   type        = string
   default     = "cst8918-final-project-group-7"
+}
+
+variable "redis_resource_group_name" {
+  description = "Name of the resource group containing Redis instances"
+  type        = string
+  default     = "cst8918-backend-rg"
 }
 
 variable "location" {
