@@ -1,6 +1,11 @@
 name: Terraform Static Analysis
 
 on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-static-analysis.yml'
   push:
     branches: [ '*' ]  # Run on push to any branch
     paths:

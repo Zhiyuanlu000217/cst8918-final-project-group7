@@ -33,7 +33,6 @@ resource "azurerm_kubernetes_cluster" "test" {
     type                        = "VirtualMachineScaleSets"
     enable_auto_scaling         = false
     vnet_subnet_id              = var.test_subnet_id
-    temporary_name_for_rotation = "defaulttemp"
   }
 
   # Network profile
@@ -87,7 +86,6 @@ resource "azurerm_kubernetes_cluster" "prod" {
     min_count                   = var.prod_min_node_count
     max_count                   = var.prod_max_node_count
     vnet_subnet_id              = var.prod_subnet_id
-    temporary_name_for_rotation = "defaulttemp"
   }
 
   # Network profile
