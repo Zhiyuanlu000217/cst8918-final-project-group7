@@ -52,7 +52,7 @@ variable "weather_api_key" {
 variable "app_version" {
   description = "Version tag for the weather app container image"
   type        = string
-  default     = "v1.0.0"
+  default     = "latest"
 }
 
 variable "test_replicas" {
