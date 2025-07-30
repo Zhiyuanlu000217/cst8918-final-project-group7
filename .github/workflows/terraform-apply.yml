@@ -1,6 +1,11 @@
 name: Terraform Apply
 
 on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-apply.yml'
   push:
     branches: [ main ]
     paths:
@@ -52,10 +57,6 @@ jobs:
     - name: Import Infrastructure Resources (if needed)
       run: |
         cd terraform
-        echo "Checking and importing backend resources if needed..."
-        terraform state show module.backend.azurerm_resource_group.backend >/dev/null 2>&1 || terraform import module.backend.azurerm_resource_group.backend "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.BACKEND_RG }}" || echo "Backend RG import failed, continuing..."
-        terraform state show module.backend.azurerm_storage_account.backend >/dev/null 2>&1 || terraform import module.backend.azurerm_storage_account.backend "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.BACKEND_RG }}/providers/Microsoft.Storage/storageAccounts/${{ env.BACKEND_STORAGE_ACCOUNT }}" || echo "Backend storage import failed, continuing..."
-        
         echo "Checking and importing network resources if needed..."
         terraform state show module.network.azurerm_resource_group.network >/dev/null 2>&1 || terraform import module.network.azurerm_resource_group.network "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}" || echo "Network RG import failed, continuing..."
         terraform state show module.network.azurerm_virtual_network.main >/dev/null 2>&1 || terraform import module.network.azurerm_virtual_network.main "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.Network/virtualNetworks/${{ env.VNET_NAME }}" || echo "VNet import failed, continuing..."

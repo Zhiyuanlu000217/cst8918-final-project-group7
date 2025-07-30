@@ -3,14 +3,8 @@ name: Docker Build and Push
 on:
   pull_request:
     branches: [ main ]
-    paths:
-      - 'remix-weather-app/**'
-      - '.github/workflows/docker-build-push.yml'
   push:
     branches: [ main ]
-    paths:
-      - 'remix-weather-app/**'
-      - '.github/workflows/docker-build-push.yml'
 
 env:
   ACR_NAME: cst8918weatheracr
