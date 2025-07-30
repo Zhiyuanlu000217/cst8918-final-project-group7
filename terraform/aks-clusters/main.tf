@@ -52,18 +52,6 @@ resource "azurerm_kubernetes_cluster" "test" {
   # Enable RBAC
   role_based_access_control_enabled = true
 
-  # API Server Access Profile - restrict access to GitHub Actions IPs and common CI/CD ranges
-  api_server_access_profile {
-    authorized_ip_ranges = [
-      "192.197.88.52/32",  # Your current public IP for local access
-      "20.42.0.0/16",      # GitHub Actions runners (partial range)
-      "20.118.0.0/16",     # GitHub Actions runners (partial range)  
-      "52.86.0.0/16",      # Common CI/CD ranges
-      "13.107.42.14/32",   # GitHub API
-      "140.82.112.0/20"    # GitHub services
-    ]
-  }
-
   # Enable logging with OMS Agent
   oms_agent {
     log_analytics_workspace_id = azurerm_log_analytics_workspace.aks.id
@@ -116,18 +104,6 @@ resource "azurerm_kubernetes_cluster" "prod" {
 
   # Enable RBAC
   role_based_access_control_enabled = true
-
-  # API Server Access Profile - restrict access to GitHub Actions IPs and common CI/CD ranges  
-  api_server_access_profile {
-    authorized_ip_ranges = [
-      "192.197.88.52/32",  # Your current public IP for local access
-      "20.42.0.0/16",    # GitHub Actions runners (partial range)
-      "20.118.0.0/16",   # GitHub Actions runners (partial range)  
-      "52.86.0.0/16",    # Common CI/CD ranges
-      "13.107.42.14/32", # GitHub API
-      "140.82.112.0/20"  # GitHub services
-    ]
-  }
 
   # Enable logging with OMS Agent
   oms_agent {
