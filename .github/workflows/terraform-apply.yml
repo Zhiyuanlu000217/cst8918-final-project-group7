@@ -84,10 +84,10 @@ jobs:
         ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         
-    - name: Terraform Apply
+    - name: Terraform Apply (Kubernetes Only)
       run: |
         cd terraform
-        terraform apply -auto-approve
+        terraform apply -target=module.remix_weather_app.kubernetes_deployment.weather_app_prod -target=module.remix_weather_app.kubernetes_deployment.weather_app_test -auto-approve
       env:
         ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
         ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
