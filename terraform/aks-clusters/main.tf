@@ -26,13 +26,14 @@ resource "azurerm_kubernetes_cluster" "test" {
 
   # Default node pool configuration
   default_node_pool {
-    name                = "default"
-    node_count          = var.test_node_count
-    vm_size             = var.test_vm_size
-    os_disk_size_gb     = 30
-    type                = "VirtualMachineScaleSets"
-    enable_auto_scaling = false
-    vnet_subnet_id      = var.test_subnet_id
+    name                        = "default"
+    node_count                  = var.test_node_count
+    vm_size                     = var.test_vm_size
+    os_disk_size_gb             = 30
+    type                        = "VirtualMachineScaleSets"
+    enable_auto_scaling         = false
+    vnet_subnet_id              = var.test_subnet_id
+    temporary_name_for_rotation = "defaulttemp"
   }
 
   # Network profile
@@ -77,15 +78,16 @@ resource "azurerm_kubernetes_cluster" "prod" {
 
   # Default node pool configuration
   default_node_pool {
-    name                = "default"
-    node_count          = var.prod_min_node_count
-    vm_size             = var.prod_vm_size
-    os_disk_size_gb     = 30
-    type                = "VirtualMachineScaleSets"
-    enable_auto_scaling = true
-    min_count           = var.prod_min_node_count
-    max_count           = var.prod_max_node_count
-    vnet_subnet_id      = var.prod_subnet_id
+    name                        = "default"
+    node_count                  = var.prod_min_node_count
+    vm_size                     = var.prod_vm_size
+    os_disk_size_gb             = 30
+    type                        = "VirtualMachineScaleSets"
+    enable_auto_scaling         = true
+    min_count                   = var.prod_min_node_count
+    max_count                   = var.prod_max_node_count
+    vnet_subnet_id              = var.prod_subnet_id
+    temporary_name_for_rotation = "defaulttemp"
   }
 
   # Network profile

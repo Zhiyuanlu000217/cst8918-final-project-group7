@@ -71,6 +71,5 @@ module "remix_weather_app" {
   prod_replicas             = var.prod_replicas
   test_domain               = var.test_domain
   prod_domain               = var.prod_domain
-  kube_config_path          = var.kube_config_path
   tags                      = var.tags
 } 

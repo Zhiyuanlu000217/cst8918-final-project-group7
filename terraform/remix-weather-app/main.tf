@@ -21,9 +21,17 @@ provider "azurerm" {
   features {}
 }
 
+# Data source to get AKS cluster info for Kubernetes provider authentication
+data "azurerm_kubernetes_cluster" "test" {
+  name                = "cst8918-test-aks"
+  resource_group_name = var.resource_group_name
+}
+
 provider "kubernetes" {
-  # Use AKS context when available, fallback to local config
-  config_path = var.kube_config_path != null ? var.kube_config_path : "~/.kube/config"
+  host                   = data.azurerm_kubernetes_cluster.test.kube_config.0.host
+  client_certificate     = base64decode(data.azurerm_kubernetes_cluster.test.kube_config.0.client_certificate)
+  client_key             = base64decode(data.azurerm_kubernetes_cluster.test.kube_config.0.client_key)
+  cluster_ca_certificate = base64decode(data.azurerm_kubernetes_cluster.test.kube_config.0.cluster_ca_certificate)
 }
 
 # Azure Container Registry (ACR)
