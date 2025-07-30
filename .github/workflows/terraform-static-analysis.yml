@@ -1,12 +1,6 @@
 name: Terraform Static Analysis
 
 on:
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'terraform/**'
-      - '.github/workflows/terraform-pr-checks.yml'
-
   push:
     branches: [ main ]  # Run on push to any branch
     paths:
